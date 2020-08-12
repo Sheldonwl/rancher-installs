@@ -63,6 +63,41 @@ chmod +x kubectl
 sudo mv ./kubectl /usr/local/bin/kubectl
 ```
 
+### (Optional) Create CA and certs 
+If you're setting up a test environment, you can create your own CA and certs, but if you already have a custom CA and certs from your organization, you can skip this step. 
+```
+openssl genrsa -out example.org.key 2048
+openssl rsa -in example.org.key -pubout -out example.org.pubkey
+openssl req -new -key example.org.key -out example.org.csr
+openssl req -in example.org.csr -noout -text
+
+openssl genrsa -out ca.key 2048
+openssl req -new -x509 -key ca.key -out ca.crt
+openssl x509 -req -in example.org.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out example.org.crt
+```
+Sources:  
+https://www.akadia.com/services/ssh_test_certificate.html
+https://gist.github.com/Soarez/9688998#:~:text=Generate%20a%20self%20signed%20certificate,incorporated%20into%20your%20certificate%20request  
+  
+### Create secrets
+Upload secrets to the K8s cluster that Rancher will be deployed on. Here you will either use the ca and certs you just created or the ones given to you by your organization.
+```
+kubectl -n cattle-system create secret tls tls-rancher-ingress --cert=tls.crt --key=tls.key
+kubectl -n cattle-system create secret generic tls-ca --from-file=cacerts.pem=./cacerts.pem
+```
+(Optional) Copy ca.crt to the other nodes, to prevent *unknown CA* connection issues between components 
+```
+scp ca.crt 10.x.x.x:/home
+```
+
+(Optional) Add to trusted CA list on every node (Ubuntu): 
+```
+mkdir /usr/share/ca-certificates/rancher
+cp /home/ca.crt /usr/share/ca-certificates/rancher/
+dpkg-reconfigure ca-certificates
+```
+Source: https://gist.github.com/leommoore/4a91060520333c25d93b
+
 ### Rancher Helm Chart 
 Fetch the latest Rancher chart. This will pull down the chart and save it in the current directory as a .tgz file.
 ```
@@ -84,92 +119,19 @@ helm template rancher ./rancher-2.4.5.tgz --output-dir . \
  --set replicas=1
  ```
 
- ### Default self-signed cert
-If you use the default self-signed cert option, you will need to install cert-manager and than Rancher with the following command:   
-(You might need to run this on the node with internet access and then copy the cert-managers *.tgz* file over.)
-```
-helm template cert-manager ./cert-manager-v0.12.0.tgz --output-dir . \
-   --namespace cert-manager \
-   --set image.repository=10.133.0.5:5000/quay.io/jetstack/cert-manager-controller \
-   --set webhook.image.repository=10.133.0.5:5000/quay.io/jetstack/cert-manager-webhook \
-   --set cainjector.image.repository=10.133.0.5:5000/quay.io/jetstack/cert-manager-cainjector
-curl -L -o cert-manager/cert-manager-crd.yaml https://raw.githubusercontent.com/jetstack/cert-manager/release-0.12/deploy/manifests/00-crds.yaml
-```
-Install Rancher: 
-```
-helm template rancher ./rancher-2.4.5.tgz --output-dir . \
- --namespace cattle-system \
- --set hostname=air-gap.eternaltechjourney.com \
- --set certmanager.version=v0.12.0 \
- --set rancherImage=10.133.0.5:5000/rancher/rancher \
- --set systemDefaultRegistry=10.133.0.5:5000 \
- --set useBundledSystemChart=true
- ```
-
-### Install Rancher 
-Either from the machine that has internet or after moving the *rancher* (and perhaps *cert-manager*) directories to the air-gapped node, run the following in the directory containing that archive. 
-```
-kubectl create namespace cattle-system
-kubectl -n cattle-system apply -R -f ./rancher
-```
-
-### Default self-signed cert
-If you'er using the default self-signed cert, you'll need to install Cert-manager first and then Rancher. 
-Go to your rendered *cert-manager* directory and run the following: 
-```
-kubectl create namespace cert-manager               # Create namespace
-kubectl apply -f cert-manager/cert-manager-crd.yaml # Create the cert-manager CustomResourceDefinitions (CRDs)
-kubectl apply -R -f ./cert-manager                  # Launch cert-manager
-```
-Now go to your rendered *rancher* directory and install Rancher: 
-```
-kubectl create namespace cattle-system
-kubectl -n cattle-system apply -R -f ./rancher
-```
-
-
 # In the air-gapped environment
 ## Images
-After moving the created **rancher-images.tar.gz** archive from your host with internet access to the air-gapped node, run the **rancher-load-images.sh** script to push all the necessary images to the private registry. (this can also be done from the initial node, if it has access to the internal registry as well) 
+After moving the created **rancher-images.tar.gz** archive from your host with internet access to the air-gapped environment, run the **rancher-load-images.sh** script to push all the necessary images to the private registry. (this can also be done from the initial node, if it has access to the internal registry as well) 
 ```
 ./rancher-load-images.sh --image-list ./rancher-images.txt --registry 10.133.0.5:5000
 ```
 
-
-# Custom certs
-## Create CA and certs 
+## Install Rancher 
+Either from the machine that has internet or after moving the *rancher* directory to the air-gapped environment, run the following in the directory containing that archive. 
 ```
-openssl genrsa -out example.org.key 2048
-openssl rsa -in example.org.key -pubout -out example.org.pubkey
-openssl req -new -key example.org.key -out example.org.csr
-openssl req -in example.org.csr -noout -text
-
-openssl genrsa -out ca.key 2048
-openssl req -new -x509 -key ca.key -out ca.crt
-openssl x509 -req -in example.org.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out example.org.crt
+kubectl create namespace cattle-system
+kubectl -n cattle-system apply -R -f ./rancher
 ```
-Sources:  
-https://www.akadia.com/services/ssh_test_certificate.html
-https://gist.github.com/Soarez/9688998#:~:text=Generate%20a%20self%20signed%20certificate,incorporated%20into%20your%20certificate%20request  
-  
-
-Upload secrets to the K8s cluster that Rancher will be deployed on:
-```
-kubectl -n cattle-system create secret tls tls-rancher-ingress --cert=tls.crt --key=tls.key
-kubectl -n cattle-system create secret generic tls-ca --from-file=cacerts.pem=./cacerts.pem
-```
-## Copy ca.crt to other nodes, to prevent 'unknown CA' connection issues between components 
-```
-scp ca.crt 10.0.0.0:/home
-```
-
-Add to trusted CA list on every node: 
-```
-mkdir /usr/share/ca-certificates/rancher
-cp /home/ca.crt /usr/share/ca-certificates/rancher/
-dpkg-reconfigure ca-certificates
-```
-Source: https://gist.github.com/leommoore/4a91060520333c25d93b
 
 # Downstream clusters
 - Create custom cluster - Add private repo from the UI.

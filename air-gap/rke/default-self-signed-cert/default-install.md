@@ -64,8 +64,7 @@ sudo mv ./kubectl /usr/local/bin/kubectl
 ```
 
 ### Render Helm Charts
-If you use the default self-signed cert option, you will need to install cert-manager and than Rancher with the following command:   
-(You might need to run this on the node with internet access and then copy the cert-managers *.tgz* file over.)
+If you use the default self-signed cert option, you will need to install cert-manager and then Rancher with the following command:   
 ```
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
@@ -101,13 +100,13 @@ helm template rancher ./rancher-2.4.5.tgz --output-dir . \
 
 # In the air-gapped environment
 ## Images
-After moving the created **rancher-images.tar.gz** archive from your host with internet access to the air-gapped node, run the **rancher-load-images.sh** script to push all the necessary images to the private registry. (this can also be done from the initial node, if it has access to the internal registry as well) 
+After moving the created **rancher-images.tar.gz** archive from your host with internet access to the air-gapped environment, run the **rancher-load-images.sh** script to push all the necessary images to the private registry. (this can also be done from the initial node, if it has access to the internal registry as well) 
 ```
 ./rancher-load-images.sh --image-list ./rancher-images.txt --registry 10.133.0.5:5000
 ```
 
 ### Install Rancher 
-Either from the machine that has internet or after moving the *rancher* and *cert-manager* directories to the air-gapped node, run the following in the directory containing the manifests.  
+Either from the machine that has internet or after moving the *rancher* and *cert-manager* directories to the air-gapped environment, run the following in the directory containing the manifests.  
   
 Go to your rendered *cert-manager* directory and run the following: 
 ```
