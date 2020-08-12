@@ -1,7 +1,7 @@
 # Nodes
-*1x Registry* E.g. (10.133.0.5:5000 will be used during this guide)  
-*1x Rancher Server*  
-*Downstream cluster(s)*  
+- 1x Registry *E.g. (10.133.0.5:5000 will be used during this guide)*  
+- 1x Rancher Server  
+- Downstream cluster(s)  
 
 ## Node pre-requisites 
 - Make sure the necessary ports are open: https://rancher.com/docs/rancher/v2.x/en/installation/requirements/ 
@@ -23,6 +23,7 @@ This script pulls all the images in the rancher-images.txt from Docker Hub and s
 This script loads images from the rancher-images.tar.gz file and pushes them to your private registry.
 
 Run the following to get the necessary scripts and text file:  
+(Make sure to change the version, to a more recent release)
 ```
 wget https://github.com/rancher/rancher/releases/download/v2.4.5/rancher-images.txt
 wget https://github.com/rancher/rancher/releases/download/v2.4.5/rancher-load-images.sh
@@ -77,6 +78,7 @@ helm template cert-manager ./cert-manager-v0.12.0.tgz --output-dir . \
    --set image.repository=10.133.0.5:5000/quay.io/jetstack/cert-manager-controller \
    --set webhook.image.repository=10.133.0.5:5000/quay.io/jetstack/cert-manager-webhook \
    --set cainjector.image.repository=10.133.0.5:5000/quay.io/jetstack/cert-manager-cainjector
+
 curl -L -o cert-manager/cert-manager-crd.yaml https://raw.githubusercontent.com/jetstack/cert-manager/release-0.12/deploy/manifests/00-crds.yaml
 ```
 
