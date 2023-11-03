@@ -32,10 +32,10 @@ Before we deploy the Rancher Helm chart, we need to first deploy cert-manager. T
 
 ```
 kubectl create namespace cert-manager
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.5.1/cert-manager.crds.yaml
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.crds.yaml
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
-helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.5.1
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.11.0
 kubectl -n cert-manager rollout status deploy/cert-manager
 kubectl -n cert-manager rollout status deploy/cert-manager-webhook
 ```
